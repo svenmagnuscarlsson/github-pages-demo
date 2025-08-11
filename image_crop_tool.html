@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bildområde Mätverktyg</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(45deg, #2c3e50, #34495e);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .file-input-label:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        select {
+            padding: 12px 16px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        .image-container {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        #imageCanvas {
+            border: 3px solid #dee2e6;
+            border-radius: 8px;
+            cursor: crosshair;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .selection-box {
+            position: absolute;
+            border: 2px dashed #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            pointer-events: none;
+            display: none;
+        }
+
+        .results {
+            padding: 20px;
+            background: white;
+        }
+
+        .results h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .result-item {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .result-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .result-value {
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+
+        .instructions {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 20px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .instructions h4 {
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+
+        .instructions ul {
+            color: #424242;
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .control-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .results-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🖼️ Bildområde Mätverktyg</h1>
+            <p>Välj en bild och dra för att mäta områden</p>
+        </div>
+
+        <div class="instructions">
+            <h4>📋 Instruktioner:</h4>
+            <ul>
+                <li>Välj en bildfil från din dator</li>
+                <li>Ange bildens verkliga storlek i dropdown-menyn</li>
+                <li>Dra med musen på bilden för att välja ett område</li>
+                <li>Se måtten för det valda området i resultaten nedan</li>
+            </ul>
+        </div>
+
+        <div class="controls">
+            <div class="control-row">
+                <div class="file-input-wrapper">
+                    <input type="file" id="imageInput" accept="image/*">
+                    <label for="imageInput" class="file-input-label">📁 Välj Bild</label>
+                </div>
+                
+                <select id="imageSizeSelect">
+                    <option value="2688x1512">2688 × 1512 pixels</option>
+                    <option value="1920x1080" selected>1920 × 1080 pixels</option>
+                    <option value="1280x720">1280 × 720 pixels</option>
+                    <option value="1024x576">1024 × 576 pixels</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="image-container">
+            <canvas id="imageCanvas"></canvas>
+            <div class="selection-box" id="selectionBox"></div>
+        </div>
+
+        <div class="results">
+            <h3>📏 Resultat för valt område:</h3>
+            <div class="results-grid">
+                <div class="result-item">
+                    <div class="result-label">Bredd (Width)</div>
+                    <div class="result-value" id="widthResult">-</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Höjd (Height)</div>
+                    <div class="result-value" id="heightResult">-</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Position X</div>
+                    <div class="result-value" id="xResult">-</div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Position Y</div>
+                    <div class="result-value" id="yResult">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class ImageCropTool {
+            constructor() {
+                this.canvas = document.getElementById('imageCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.selectionBox = document.getElementById('selectionBox');
+                this.imageInput = document.getElementById('imageInput');
+                this.imageSizeSelect = document.getElementById('imageSizeSelect');
+                
+                this.image = null;
+                this.isSelecting = false;
+                this.startX = 0;
+                this.startY = 0;
+                this.currentX = 0;
+                this.currentY = 0;
+                this.actualImageWidth = 1920;
+                this.actualImageHeight = 1080;
+                this.displayScale = 1;
+                
+                this.initializeEventListeners();
+            }
+
+            initializeEventListeners() {
+                this.imageInput.addEventListener('change', (e) => this.handleImageUpload(e));
+                this.imageSizeSelect.addEventListener('change', (e) => this.handleSizeChange(e));
+                
+                this.canvas.addEventListener('mousedown', (e) => this.startSelection(e));
+                this.canvas.addEventListener('mousemove', (e) => this.updateSelection(e));
+                this.canvas.addEventListener('mouseup', (e) => this.endSelection(e));
+                this.canvas.addEventListener('mouseleave', (e) => this.endSelection(e));
+            }
+
+            handleImageUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.image = new Image();
+                    this.image.onload = () => {
+                        this.displayImage();
+                        this.clearResults();
+                    };
+                    this.image.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            handleSizeChange(event) {
+                const [width, height] = event.target.value.split('x').map(Number);
+                this.actualImageWidth = width;
+                this.actualImageHeight = height;
+                this.clearResults();
+            }
+
+            displayImage() {
+                if (!this.image) return;
+
+                // Beräkna visningsstorlek (max 800px bred eller 600px hög)
+                const maxWidth = 800;
+                const maxHeight = 600;
+                
+                let displayWidth = this.image.width;
+                let displayHeight = this.image.height;
+                
+                if (displayWidth > maxWidth) {
+                    displayHeight = (displayHeight * maxWidth) / displayWidth;
+                    displayWidth = maxWidth;
+                }
+                
+                if (displayHeight > maxHeight) {
+                    displayWidth = (displayWidth * maxHeight) / displayHeight;
+                    displayHeight = maxHeight;
+                }
+
+                this.canvas.width = displayWidth;
+                this.canvas.height = displayHeight;
+                
+                // Beräkna skalan mellan visad bild och verklig bildstorlek
+                this.displayScale = Math.min(
+                    this.actualImageWidth / displayWidth,
+                    this.actualImageHeight / displayHeight
+                );
+
+                this.ctx.drawImage(this.image, 0, 0, displayWidth, displayHeight);
+                this.hideSelectionBox();
+            }
+
+            startSelection(event) {
+                if (!this.image) return;
+                
+                const rect = this.canvas.getBoundingClientRect();
+                this.startX = event.clientX - rect.left;
+                this.startY = event.clientY - rect.top;
+                this.isSelecting = true;
+                
+                this.selectionBox.style.display = 'block';
+                this.updateSelectionBox();
+            }
+
+            updateSelection(event) {
+                if (!this.isSelecting || !this.image) return;
+                
+                const rect = this.canvas.getBoundingClientRect();
+                this.currentX = event.clientX - rect.left;
+                this.currentY = event.clientY - rect.top;
+                
+                this.updateSelectionBox();
+                this.calculateAndDisplayResults();
+            }
+
+            endSelection(event) {
+                if (!this.isSelecting) return;
+                this.isSelecting = false;
+            }
+
+            updateSelectionBox() {
+                const canvasRect = this.canvas.getBoundingClientRect();
+                const containerRect = this.canvas.parentElement.getBoundingClientRect();
+                
+                const left = Math.min(this.startX, this.currentX);
+                const top = Math.min(this.startY, this.currentY);
+                const width = Math.abs(this.currentX - this.startX);
+                const height = Math.abs(this.currentY - this.startY);
+                
+                this.selectionBox.style.left = (canvasRect.left - containerRect.left + left) + 'px';
+                this.selectionBox.style.top = (canvasRect.top - containerRect.top + top) + 'px';
+                this.selectionBox.style.width = width + 'px';
+                this.selectionBox.style.height = height + 'px';
+            }
+
+            calculateAndDisplayResults() {
+                const selectionWidth = Math.abs(this.currentX - this.startX);
+                const selectionHeight = Math.abs(this.currentY - this.startY);
+                const selectionX = Math.min(this.startX, this.currentX);
+                const selectionY = Math.min(this.startY, this.currentY);
+
+                // Konvertera till verkliga bildkoordinater
+                const realWidth = Math.round(selectionWidth * this.displayScale);
+                const realHeight = Math.round(selectionHeight * this.displayScale);
+                const realX = Math.round(selectionX * this.displayScale);
+                const realY = Math.round(selectionY * this.displayScale);
+
+                document.getElementById('widthResult').textContent = realWidth + 'px';
+                document.getElementById('heightResult').textContent = realHeight + 'px';
+                document.getElementById('xResult').textContent = realX + 'px';
+                document.getElementById('yResult').textContent = realY + 'px';
+            }
+
+            hideSelectionBox() {
+                this.selectionBox.style.display = 'none';
+            }
+
+            clearResults() {
+                document.getElementById('widthResult').textContent = '-';
+                document.getElementById('heightResult').textContent = '-';
+                document.getElementById('xResult').textContent = '-';
+                document.getElementById('yResult').textContent = '-';
+                this.hideSelectionBox();
+            }
+        }
+
+        // Starta applikationen när sidan laddas
+        document.addEventListener('DOMContentLoaded', () => {
+            new ImageCropTool();
+        });
+    </script>
+</body>
+</html>
